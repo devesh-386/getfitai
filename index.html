@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FitAI — Your AI Fitness Coach</title>
+    <meta name="description" content="FitAI is a free Android fitness app powered by Google Gemini. AI workouts, food scanning, body composition tracking, and Health Connect sync. Free forever.">
+    <meta property="og:title" content="FitAI — Your AI Fitness Coach">
+    <meta property="og:description" content="Personalized AI workouts, food scanning, body tracking. 100% free Android app.">
+    <meta property="og:type" content="website">
+    <link rel="canonical" href="https://fitai.vercel.app">
+    <script type="module">
+        import { prepare, layout } from 'https://esm.sh/@chenglou/pretext@0.1.0';
+        window.PretextAPI = { prepare, layout };
+    </script>
+    <style>
+        :root {
+            --primary:       #F97316;
+            --primary-dark:  #EA580C;
+            --primary-glow:  rgba(249,115,22,0.25);
+            --bg:            #0C0A09;
+            --bg-card:       #1C1917;
+            --bg-card2:      #141210;
+            --border:        #292524;
+            --border-h:      #44403C;
+            --text:          #FAFAF9;
+            --muted:         #A8A29E;
+            --radius-lg:     24px;
+            --radius-md:     16px;
+            --radius-sm:     10px;
+            --max-w:         1160px;
+            --mx:            var(--mouse-x, 50%);
+            --my:            var(--mouse-y, 50%);
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            touch-action: manipulation; /* removes 300ms tap delay on mobile */
+        }
+        a { color: var(--primary); text-decoration: none; transition: color .2s; }
+        a:hover { color: var(--primary-dark); }
+
+        /* ── AMBIENT ── */
+        #ambient {
+            position: fixed; inset: 0;
+            pointer-events: none; z-index: 0;
+        }
+        #particles { position: absolute; inset: 0; width: 100%; height: 100%; }
+        #glow {
+            position: fixed; inset: 0;
+            background: radial-gradient(
+                circle 700px at var(--mx) var(--my),
+                rgba(249,115,22,0.10) 0%,
+                transparent 70%
+            );
+            pointer-events: none; z-index: 0;
+            transition: background .05s linear;
+        }
+
+        /* ── LAYOUT ── */
+        .wrap {
+            max-width: var(--max-w);
+            margin: 0 auto;
+            padding: 0 24px;
+            position: relative; z-index: 1;
+        }
+
+        /* ── NAV ── */
+        nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 22px 0;
+        }
+        .logo {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 22px; font-weight: 800; letter-spacing: -.5px;
+        }
+        .logo-box {
+            width: 38px; height: 38px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 14px var(--primary-glow);
+        }
+        .logo-box svg { width: 22px; height: 22px; fill: #fff; }
+        .logo-text em { color: var(--primary); font-style: normal; }
+        .nav-gh {
+            display: flex; align-items: center; gap: 7px;
+            font-size: 13px; font-weight: 600; color: var(--muted);
+            border: 1px solid var(--border); border-radius: 8px;
+            padding: 6px 14px;
+            transition: color .2s, border-color .2s;
+        }
+        .nav-gh:hover { color: var(--text); border-color: var(--border-h); }
+        .nav-gh svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; }
+
+        /* ── HERO ── */
+        .hero {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 56px;
+            align-items: center;
+            padding: 72px 0 110px;
+            min-height: 88vh;
+            min-height: 88dvh;
+        }
+        .hero-left { display: flex; flex-direction: column; gap: 22px; }
+        .badge {
+            display: inline-flex; align-items: center; gap: 7px;
+            background: rgba(249,115,22,.10);
+            border: 1px solid rgba(249,115,22,.22);
+            color: var(--primary);
+            padding: 5px 14px; border-radius: 100px;
+            font-size: 13px; font-weight: 600;
+            width: fit-content;
+        }
+        .badge svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.5; }
+        .hero-h1 {
+            font-size: clamp(42px, 5.5vw, 70px);
+            font-weight: 800; line-height: 1.08; letter-spacing: -1.5px;
+        }
+        .hero-h1 .grad {
+            background: linear-gradient(130deg, var(--primary) 0%, #FF9D5C 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .cursor {
+            display: inline-block; width: 3px; height: .9em;
+            background: var(--primary); margin-left: 3px;
+            vertical-align: middle;
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+        .hero-sub {
+            font-size: 18px; color: var(--muted); max-width: 460px; line-height: 1.65;
+        }
+
+        /* name prompt */
+        .name-prompt {
+            display: flex; align-items: center; gap: 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 0 16px;
+            min-height: 48px;            /* ≥44px touch target */
+            width: fit-content;
+            font-size: 14px; color: var(--muted);
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .name-prompt:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(249,115,22,.12);
+        }
+        .name-prompt input {
+            background: transparent; border: none; outline: none;
+            color: var(--text); font-size: 16px; font-weight: 600;  /* 16px = no iOS auto-zoom */
+            width: 140px; min-height: 44px;
+        }
+        .name-prompt input::placeholder { color: var(--muted); font-weight: 400; }
+        .name-prompt svg { width: 16px; height: 16px; fill: none; stroke: var(--primary); stroke-width: 2; flex-shrink: 0; }
+
+        /* CTA */
+        .cta-wrap { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+        .btn-dl {
+            display: inline-flex; align-items: center; justify-content: center; gap: 11px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: #fff; font-size: 17px; font-weight: 700;
+            padding: 17px 30px; border-radius: var(--radius-sm);
+            box-shadow: 0 8px 28px var(--primary-glow);
+            transition: transform .3s cubic-bezier(.16,1,.3,1), box-shadow .3s;
+            position: relative; overflow: hidden;
+            width: fit-content; min-height: 54px;
+            text-decoration: none;
+        }
+        .btn-dl::after {
+            content: '';
+            position: absolute; inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent);
+            transform: translateX(-100%);
+            transition: transform .5s ease;
+        }
+        .btn-dl:hover { transform: translateY(-4px); box-shadow: 0 14px 36px var(--primary-glow); color: #fff; }
+        .btn-dl:hover::after { transform: translateX(100%); }
+        .btn-dl svg {
+            width: 22px; height: 22px; fill: none;
+            stroke: currentColor; stroke-width: 2.5;
+            stroke-linecap: round; stroke-linejoin: round;
+            animation: bob 2s ease-in-out infinite;
+        }
+        @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(4px)} }
+        .dl-meta {
+            font-size: 13px; color: var(--muted);
+            display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+        }
+        .dl-meta span { color: var(--border-h, #44403C); }
+
+        /* ── PHONE MOCKUP ── */
+        .hero-right {
+            perspective: 1100px;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .phone {
+            width: 300px; height: 620px;
+            background: #050302;
+            border-radius: 42px; padding: 11px;
+            box-shadow:
+                0 30px 80px rgba(0,0,0,.85),
+                inset 0 0 0 2px #2a2825,
+                inset 0 0 24px rgba(255,255,255,.06),
+                0 0 0 1px #111;
+            transform-style: preserve-3d;
+            transform: rotateX(4deg) rotateY(-14deg);
+            transition: transform .12s ease-out;
+        }
+        .screen {
+            width: 100%; height: 100%;
+            background: var(--bg);
+            border-radius: 32px; overflow: hidden;
+            display: flex; flex-direction: column;
+            border: 1px solid var(--border);
+        }
+        /* status bar */
+        .s-bar {
+            padding: 12px 16px 8px;
+            display: flex; align-items: center; justify-content: space-between;
+            background: rgba(20,18,16,.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+        }
+        .s-bar-left {
+            display: flex; align-items: center; gap: 7px;
+        }
+        .s-bar-logo { display: flex; align-items: center; gap: 5px; font-weight: 700; font-size: 14px; }
+        .s-bar-logo em { color: var(--primary); font-style: normal; }
+        .s-bar-logo svg { width: 14px; height: 14px; fill: var(--primary); }
+        .s-greeting { font-size: 11px; color: var(--muted); }
+        .s-greeting strong { color: var(--text); }
+        .s-avatar {
+            width: 28px; height: 28px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; font-weight: 700; color: #fff;
+        }
+        /* body */
+        .s-body {
+            padding: 14px 12px;
+            flex: 1; overflow: hidden;
+            display: flex; flex-direction: column; gap: 10px;
+            background: radial-gradient(circle at 50% 30%, rgba(249,115,22,.05) 0%, transparent 65%);
+        }
+        /* calorie ring card */
+        .ring-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px; padding: 12px;
+            display: flex; align-items: center; gap: 12px;
+            animation: rise .5s .05s ease both;
+        }
+        .ring-card svg circle.track { stroke: #292524; }
+        .ring-card svg circle.fill {
+            stroke: var(--primary);
+            stroke-dasharray: 196; stroke-dashoffset: 58;
+            stroke-linecap: round;
+            transform: rotate(-90deg); transform-origin: 50% 50%;
+            animation: fillIn 1.2s .4s cubic-bezier(.34,1.56,.64,1) both;
+        }
+        @keyframes fillIn { from { stroke-dashoffset: 196; } }
+        .ring-info { display: flex; flex-direction: column; gap: 3px; }
+        .ring-kcal { font-size: 20px; font-weight: 800; line-height: 1; }
+        .ring-of { font-size: 10px; color: var(--muted); }
+        .ring-macros { display: flex; flex-direction: column; gap: 3px; margin-left: auto; }
+        .macro-row { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--muted); }
+        .macro-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+        .macro-row b { color: var(--text); font-size: 11px; }
+        /* stats row */
+        .stats-row {
+            display: grid; grid-template-columns: repeat(3,1fr); gap: 6px;
+            animation: rise .5s .15s ease both;
+        }
+        .stat {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px; padding: 8px 6px;
+            text-align: center;
+        }
+        .stat-icon { font-size: 14px; }
+        .stat-val { font-size: 11px; font-weight: 700; color: var(--text); display: block; margin-top: 2px; }
+        .stat-lbl { font-size: 9px; color: var(--muted); }
+        /* workout card */
+        .wk-card {
+            background: rgba(249,115,22,.08);
+            border: 1px solid rgba(249,115,22,.22);
+            border-radius: 14px; padding: 12px;
+            animation: rise .5s .25s ease both;
+        }
+        .wk-label {
+            font-size: 9px; font-weight: 700; color: var(--primary);
+            text-transform: uppercase; letter-spacing: .8px;
+            display: flex; align-items: center; gap: 4px; margin-bottom: 6px;
+        }
+        .wk-label svg { width: 9px; height: 9px; fill: none; stroke: currentColor; stroke-width: 2.5; }
+        .wk-name { font-size: 13px; font-weight: 800; margin-bottom: 3px; }
+        .wk-meta { font-size: 10px; color: var(--muted); }
+        .wk-btn {
+            margin-top: 9px;
+            background: var(--primary); color: #fff;
+            font-size: 10px; font-weight: 700; letter-spacing: .6px;
+            text-align: center; padding: 6px 0; border-radius: 8px;
+        }
+        /* insight */
+        .insight {
+            background: var(--bg-card2);
+            border: 1px solid var(--border);
+            border-radius: 10px; padding: 9px 10px;
+            font-size: 10px; color: var(--muted);
+            line-height: 1.5;
+            animation: rise .5s .35s ease both;
+        }
+        .insight strong { color: var(--primary); }
+        @keyframes rise { from { opacity:0; transform:translateY(12px); } }
+
+        /* ── FEATURES ── */
+        #features { padding: 80px 0; }
+        .sec-hd { text-align: center; margin-bottom: 56px; }
+        .sec-hd h2 {
+            font-size: clamp(30px, 4vw, 44px);
+            font-weight: 800; margin-bottom: 14px;
+        }
+        .sec-hd p { font-size: 17px; color: var(--muted); max-width: 560px; margin: 0 auto; }
+        .feat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+        }
+        .feat-card {
+            background: var(--bg-card);
+            border: 1px solid transparent;
+            border-radius: var(--radius-lg); padding: 28px;
+            position: relative; overflow: hidden;
+            background-clip: padding-box;
+            transition: transform .3s cubic-bezier(.16,1,.3,1), box-shadow .3s;
+        }
+        .feat-card::before {
+            content: '';
+            position: absolute; top:-55%; left:-55%; width:210%; height:210%;
+            background: conic-gradient(from 0deg, transparent 72%, var(--primary) 100%);
+            opacity: 0; transition: opacity .3s;
+            animation: spin 4.5s linear infinite;
+            z-index: -1;
+        }
+        .feat-card::after {
+            content: ''; position: absolute; inset: 1px;
+            background: var(--bg-card);
+            border-radius: calc(var(--radius-lg) - 1px); z-index: -1;
+        }
+        .feat-card > * { position: relative; z-index: 1; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .feat-card:hover { transform: translateY(-7px); box-shadow: 0 16px 40px rgba(249,115,22,.13); }
+        .feat-card:hover::before { opacity: 1; }
+        .feat-icon {
+            width: 52px; height: 52px;
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; margin-bottom: 20px;
+            transition: transform .3s, border-color .3s, box-shadow .3s;
+        }
+        .feat-card:hover .feat-icon {
+            transform: scale(1.12) rotate(6deg);
+            border-color: var(--primary);
+            box-shadow: 0 0 18px var(--primary-glow);
+        }
+        .feat-card h3 { font-size: 20px; font-weight: 800; margin-bottom: 10px; }
+        .feat-card p { font-size: 15px; color: var(--muted); line-height: 1.65; }
+
+        /* ── INSTALL ── */
+        .install-wrap {
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            padding: 80px 0;
+            position: relative; z-index: 1;
+        }
+        .install-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: start;
+        }
+        .install-hd { margin-bottom: 36px; }
+        .install-hd h2 { font-size: 34px; font-weight: 800; margin-bottom: 10px; }
+        .install-hd p { font-size: 16px; color: var(--muted); }
+        .steps { display: flex; flex-direction: column; gap: 28px; position: relative; }
+        .steps::before {
+            content: ''; position: absolute;
+            top: 24px; bottom: 24px; left: 20px;
+            width: 2px; background: var(--border); z-index: 0;
+        }
+        .step { display: flex; gap: 20px; position: relative; z-index: 1; }
+        .step-n {
+            width: 42px; height: 42px; flex-shrink: 0;
+            background: var(--bg-card); border: 2px solid var(--border);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; font-weight: 800; color: var(--muted);
+            transition: border-color .3s, color .3s, box-shadow .3s;
+        }
+        .step:hover .step-n {
+            border-color: var(--primary); color: var(--primary);
+            box-shadow: 0 0 18px var(--primary-glow);
+        }
+        .step-body { padding-top: 8px; }
+        .step-body h4 { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+        .step-body p { font-size: 14px; color: var(--muted); }
+        .btn-sm {
+            display: inline-flex; align-items: center; gap: 7px;
+            background: rgba(255,255,255,.05);
+            border: 1px solid var(--border);
+            color: var(--text); font-size: 13px; font-weight: 600;
+            padding: 9px 16px; border-radius: var(--radius-sm);
+            margin-top: 10px; transition: background .2s, border-color .2s;
+        }
+        .btn-sm:hover { background: rgba(255,255,255,.1); border-color: var(--border-h); color: var(--text); }
+        .btn-sm svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; }
+
+        /* privacy note */
+        .priv {
+            background: rgba(234,88,12,.05);
+            border: 1px solid rgba(234,88,12,.2);
+            border-left: 4px solid var(--primary);
+            border-radius: var(--radius-md); padding: 28px;
+            display: flex; gap: 20px;
+        }
+        .priv-icon { color: var(--primary); flex-shrink: 0; }
+        .priv-body h3 { font-size: 18px; font-weight: 800; margin-bottom: 10px; }
+        .priv-body p { font-size: 15px; color: var(--muted); line-height: 1.65; }
+
+        /* ── FOOTER ── */
+        footer {
+            padding: 44px 0 36px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            display: flex; flex-direction: column; align-items: center; gap: 14px;
+        }
+        .foot-logo { filter: grayscale(1); opacity: .4; }
+        .foot-links { display: flex; gap: 20px; }
+        .foot-links a {
+            font-size: 14px; color: var(--muted);
+            display: flex; align-items: center; gap: 6px;
+            transition: color .2s;
+        }
+        .foot-links a:hover { color: var(--primary); }
+        .foot-links a svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; }
+        .foot-credit { font-size: 12px; color: #78716C; }
+
+        /* ── REVEAL ── */
+        .reveal { opacity: 0; transform: translateY(28px); transition: opacity .8s cubic-bezier(.16,1,.3,1), transform .8s cubic-bezier(.16,1,.3,1); }
+        .reveal.on { opacity: 1; transform: none; }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 960px) {
+            .hero { grid-template-columns: 1fr; text-align: center; gap: 40px; padding: 56px 0 80px; min-height: auto; }
+            .hero-left { align-items: center; }
+            .hero-right { order: -1; }
+            .hero-sub { max-width: 100%; }
+            .install-grid { grid-template-columns: 1fr; gap: 44px; }
+            .priv { flex-direction: column; align-items: center; text-align: center; }
+        }
+        @media (max-width: 640px) {
+            .wrap { padding: 0 16px; }
+            nav { padding: 14px 0; }
+            .nav-gh { display: none; }
+            .hero-h1 { font-size: 38px; }
+            .phone { width: 265px; height: 560px; }
+            .btn-dl { width: 100%; }
+            .dl-meta { justify-content: center; }
+            .name-prompt { width: 100%; }
+            .name-prompt input { flex: 1; width: auto; }
+            .feat-grid { grid-template-columns: 1fr; }
+            .steps::before { left: 14px; }
+            .step-n { width: 36px; height: 36px; font-size: 14px; }
+            #features, .install-wrap { padding: 56px 0; }
+            .sec-hd h2 { font-size: 28px; }
+            .install-hd h2 { font-size: 26px; }
+        }
+        @media (max-width: 400px) {
+            .hero-h1 { font-size: 32px; }
+            .phone { width: 240px; height: 510px; border-radius: 36px; }
+        }
+
+        /* ── REDUCED MOTION (accessibility) ── */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: .001ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: .001ms !important;
+                scroll-behavior: auto !important;
+            }
+            #particles { display: none; }      /* JS also bails — see script */
+            #glow { display: none; }
+            .cursor { display: none; }
+            .reveal { opacity: 1 !important; transform: none !important; }
+            .phone { transform: rotateX(3deg) rotateY(-12deg) !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="ambient">
+    <canvas id="particles"></canvas>
+</div>
+<div id="glow"></div>
+
+<div class="wrap">
+
+    <!-- NAV -->
+    <nav>
+        <div class="logo">
+            <div class="logo-box">
+                <svg viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M18,44 h6 v20 h-6 z M24,36 h8 v36 h-8 z M32,42 h8 v24 h-8 z M40,50 h28 v8 h-28 z M68,42 h8 v24 h-8 z M76,36 h8 v36 h-8 z M84,44 h6 v20 h-6 z"/>
+                </svg>
+            </div>
+            <span class="logo-text">Fit<em>AI</em></span>
+        </div>
+        <a href="#download" class="nav-gh">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Get the app
+        </a>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="hero-left reveal on">
+            <div class="badge">
+                <svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                Powered by Google Gemini
+            </div>
+
+            <h1 class="hero-h1">
+                Your <span class="grad" id="tw">AI fitness</span><span class="cursor"></span><br>coach.
+            </h1>
+
+            <p class="hero-sub">Personalized workouts, food scanning, body tracking — 100% free, forever. No subscription. No middleman.</p>
+
+            <!-- name prompt -->
+            <div class="name-prompt">
+                <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span>Personalise the app for&nbsp;</span>
+                <input id="name-in" type="text" placeholder="your name" maxlength="20" autocomplete="off" spellcheck="false">
+            </div>
+
+            <div class="cta-wrap" id="download">
+                <a href="https://github.com/devesh-386/FitAI/releases/download/v1.0.0/FitAI-v1.0.0.apk"
+                   class="btn-dl" id="dl-btn">
+                    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Download for Android
+                </a>
+                <p class="dl-meta">Free <span>•</span> Android 8.0+ <span>•</span> ~33 MB <span>•</span> No credit card</p>
+            </div>
+        </div>
+
+        <div class="hero-right reveal on">
+            <div class="phone" id="phone">
+                <div class="screen">
+
+                    <!-- status bar -->
+                    <div class="s-bar">
+                        <div class="s-bar-left">
+                            <div class="s-bar-logo">
+                                <svg viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg"><path d="M18,44 h6 v20 h-6 z M24,36 h8 v36 h-8 z M32,42 h8 v24 h-8 z M40,50 h28 v8 h-28 z M68,42 h8 v24 h-8 z M76,36 h8 v36 h-8 z M84,44 h6 v20 h-6 z"/></svg>
+                                Fit<em>AI</em>
+                            </div>
+                        </div>
+                        <div class="s-greeting">
+                            Good morning, <strong id="mock-name">You</strong> 👋
+                        </div>
+                        <div class="s-avatar" id="mock-av">?</div>
+                    </div>
+
+                    <!-- body -->
+                    <div class="s-body">
+
+                        <!-- calorie ring -->
+                        <div class="ring-card">
+                            <svg width="72" height="72" viewBox="0 0 72 72">
+                                <circle class="track" cx="36" cy="36" r="31" fill="none" stroke-width="6.5"/>
+                                <circle class="fill" cx="36" cy="36" r="31" fill="none" stroke-width="6.5"/>
+                                <text x="36" y="33" text-anchor="middle" fill="#FAFAF9" font-size="11" font-weight="800">1,640</text>
+                                <text x="36" y="46" text-anchor="middle" fill="#A8A29E" font-size="8">/ 2,200 kcal</text>
+                            </svg>
+                            <div class="ring-info">
+                                <span class="ring-kcal">1,640</span>
+                                <span class="ring-of">of 2,200 kcal</span>
+                            </div>
+                            <div class="ring-macros">
+                                <div class="macro-row"><span class="macro-dot" style="background:#F97316"></span>Protein <b>82g</b></div>
+                                <div class="macro-row"><span class="macro-dot" style="background:#FBBF24"></span>Carbs <b>190g</b></div>
+                                <div class="macro-row"><span class="macro-dot" style="background:#34D399"></span>Fat <b>48g</b></div>
+                            </div>
+                        </div>
+
+                        <!-- stats -->
+                        <div class="stats-row">
+                            <div class="stat"><div class="stat-icon">👟</div><span class="stat-val">7,240</span><span class="stat-lbl">steps</span></div>
+                            <div class="stat"><div class="stat-icon">😴</div><span class="stat-val">7h 20m</span><span class="stat-lbl">sleep</span></div>
+                            <div class="stat"><div class="stat-icon">💧</div><span class="stat-val">1.8 L</span><span class="stat-lbl">water</span></div>
+                        </div>
+
+                        <!-- AI workout card -->
+                        <div class="wk-card">
+                            <div class="wk-label">
+                                <svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                                AI Workout Today
+                            </div>
+                            <div class="wk-name">Upper Body Power</div>
+                            <div class="wk-meta">4 exercises · 40 min · Dumbbells</div>
+                            <div class="wk-btn">START WORKOUT →</div>
+                        </div>
+
+                        <!-- insight -->
+                        <div class="insight">
+                            <strong>AI Insight:</strong> You're 82g protein in — great pace. Push for 120g by dinner and you'll hit your recomp target this week.
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section id="features">
+        <div class="sec-hd reveal">
+            <h2>What it does</h2>
+            <p>Everything you need to hit your goals, powered by AI that actually adapts to you.</p>
+        </div>
+        <div class="feat-grid">
+            <div class="feat-card reveal">
+                <div class="feat-icon">🏋️</div>
+                <h3>AI Workouts</h3>
+                <p>Personalized daily plans built around your goals, experience level, and available equipment. No guesswork at the gym.</p>
+            </div>
+            <div class="feat-card reveal" style="transition-delay:.08s">
+                <div class="feat-icon">📸</div>
+                <h3>Food Scan</h3>
+                <p>Point your camera at any meal. AI identifies it and returns calories and macros in seconds — no barcode needed.</p>
+            </div>
+            <div class="feat-card reveal" style="transition-delay:.16s">
+                <div class="feat-icon">📊</div>
+                <h3>Body Composition</h3>
+                <p>Log measurements, track body-fat % with the Navy formula, and watch the trend line over time with clean SVG charts.</p>
+            </div>
+            <div class="feat-card reveal" style="transition-delay:.24s">
+                <div class="feat-icon">⌚</div>
+                <h3>Health Connect</h3>
+                <p>Auto-syncs steps, sleep, active calories, and resting heart rate from your smartwatch — Samsung, Fitbit, Mi, and more.</p>
+            </div>
+        </div>
+    </section>
+
+</div>
+
+<!-- INSTALL — full width section -->
+<div class="install-wrap">
+    <div class="wrap">
+        <div class="install-grid">
+
+            <div class="reveal">
+                <div class="install-hd">
+                    <h2>How to install</h2>
+                    <p>Up and running in under 2 minutes.</p>
+                </div>
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-n">1</div>
+                        <div class="step-body">
+                            <h4>Download the APK</h4>
+                            <p>Tap the <strong>Download for Android</strong> button above to get the latest release.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-n">2</div>
+                        <div class="step-body">
+                            <h4>Allow Unknown Sources</h4>
+                            <p>Android will ask permission to install apps outside the Play Store — tap <strong>Allow</strong>. Normal for sideloaded apps.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-n">3</div>
+                        <div class="step-body">
+                            <h4>Install FitAI</h4>
+                            <p>Open the downloaded <code>FitAI-v1.0.0.apk</code> and tap <strong>Install</strong>.</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-n">4</div>
+                        <div class="step-body">
+                            <h4>Get Your Free Gemini Key</h4>
+                            <p>The app walks you through it on first launch. Takes 30 seconds — no credit card.</p>
+                            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="btn-sm">
+                                <svg viewBox="0 0 24 24"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                                Get Free Key
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="priv reveal" style="transition-delay:.15s">
+                <div class="priv-icon">
+                    <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </div>
+                <div class="priv-body">
+                    <h3>Why bring your own API key?</h3>
+                    <p>FitAI runs on Google Gemini's free tier. By using your own key, the app stays <strong>100% free with zero server costs</strong>. Your health data goes directly from your phone to Google — it never touches a third-party server.</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- FOOTER -->
+<div class="wrap">
+    <footer>
+        <div class="logo foot-logo">
+            <div class="logo-box" style="width:28px;height:28px;border-radius:8px">
+                <svg viewBox="0 0 108 108" xmlns="http://www.w3.org/2000/svg" style="width:16px;height:16px;fill:#fff">
+                    <path d="M18,44 h6 v20 h-6 z M24,36 h8 v36 h-8 z M32,42 h8 v24 h-8 z M40,50 h28 v8 h-28 z M68,42 h8 v24 h-8 z M76,36 h8 v36 h-8 z M84,44 h6 v20 h-6 z"/>
+                </svg>
+            </div>
+            <span class="logo-text" style="font-size:18px">Fit<em>AI</em></span>
+        </div>
+        <div class="foot-links">
+            <a href="#download">
+                <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download
+            </a>
+            <a href="/privacy.html">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                Privacy Policy
+            </a>
+        </div>
+        <p class="foot-credit">Made by Devesh · Free forever</p>
+    </footer>
+</div>
+
+<script>
+// ── NAME PERSISTENCE ──
+const nameIn = document.getElementById('name-in');
+const mockName = document.getElementById('mock-name');
+const mockAv = document.getElementById('mock-av');
+
+function applyName(n) {
+    const clean = n.trim() || 'You';
+    mockName.textContent = clean;
+    mockAv.textContent = clean === 'You' ? '🙂' : clean[0].toUpperCase();
+}
+
+const saved = localStorage.getItem('fitai_name') || '';
+if (saved) nameIn.value = saved;
+applyName(saved);
+
+nameIn.addEventListener('input', () => {
+    const v = nameIn.value.trim();
+    localStorage.setItem('fitai_name', v);
+    applyName(v);
+});
+
+// ── MOTION PREFERENCE (accessibility) ──
+const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ── TRACKING (mouse + touch) → updates CSS vars + phone + particles ──
+let cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+const glowEl = document.getElementById('glow');
+const phone = document.getElementById('phone');
+let tick = false;
+
+function track(x, y) {
+    cx = x; cy = y;
+    if (tick) return;            // throttle to one update per animation frame
+    tick = true;
+    requestAnimationFrame(() => {
+        document.documentElement.style.setProperty('--mouse-x', cx + 'px');
+        document.documentElement.style.setProperty('--mouse-y', cy + 'px');
+        if (!REDUCED) {
+            const rx = ((cy - window.innerHeight/2) / (window.innerHeight/2)) * -10;
+            const ry = ((cx - window.innerWidth/2)  / (window.innerWidth/2))  *  14;
+            phone.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`;
+        }
+        tick = false;
+    });
+}
+
+document.addEventListener('mousemove', e => track(e.clientX, e.clientY));
+document.addEventListener('touchmove', e => {
+    if (e.touches.length) track(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: true });
+document.addEventListener('touchstart', e => {
+    if (e.touches.length) track(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: true });
+
+// ── PARTICLE NETWORK ──
+if (!REDUCED) (function() {
+    const canvas = document.getElementById('particles');
+    const ctx = canvas.getContext('2d');
+    // Scale particle count to screen width — the connection loop is O(N²),
+    // so fewer particles on phones keeps it at 60fps. (~30 mobile → 55 desktop)
+    const N = Math.round(Math.min(55, Math.max(28, window.innerWidth / 26)));
+    const LINK = window.innerWidth < 640 ? 96 : 120;   // shorter links on small screens
+    let particles = [];
+
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    for (let i = 0; i < N; i++) {
+        particles.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            vx: (Math.random() - .5) * .45,
+            vy: (Math.random() - .5) * .45,
+            r: Math.random() * 1.4 + .4,
+        });
+    }
+
+    function frame() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let i = 0; i < N; i++) {
+            const p = particles[i];
+            p.x += p.vx; p.y += p.vy;
+            if (p.x < 0 || p.x > canvas.width)  p.vx *= -1;
+            if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+            ctx.fillStyle = 'rgba(249,115,22,.38)';
+            ctx.fill();
+
+            // particle–particle lines
+            for (let j = i+1; j < N; j++) {
+                const q = particles[j];
+                const dx = p.x - q.x, dy = p.y - q.y;
+                const d = Math.sqrt(dx*dx + dy*dy);
+                if (d < LINK) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = `rgba(249,115,22,${.14 - d/860})`;
+                    ctx.lineWidth = .8;
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(q.x, q.y);
+                    ctx.stroke();
+                }
+            }
+
+            // particle–cursor lines
+            const mx = cx, my = cy;
+            const dm = Math.sqrt((p.x-mx)**2 + (p.y-my)**2);
+            if (dm < 160) {
+                ctx.beginPath();
+                ctx.strokeStyle = `rgba(249,115,22,${.28 - dm/570})`;
+                ctx.lineWidth = 1.2;
+                ctx.moveTo(p.x, p.y);
+                ctx.lineTo(mx, my);
+                ctx.stroke();
+            }
+        }
+        requestAnimationFrame(frame);
+    }
+    frame();
+})();
+
+// ── MAGNETIC BUTTON (pointer-only, skips touch + reduced-motion) ──
+const dlBtn = document.getElementById('dl-btn');
+if (!REDUCED && window.matchMedia('(hover: hover)').matches) {
+    dlBtn.addEventListener('mousemove', function(e) {
+        const r = this.getBoundingClientRect();
+        const x = e.clientX - r.left - r.width/2;
+        const y = e.clientY - r.top  - r.height/2;
+        this.style.transform = `translate(${x*.18}px, ${y*.18}px) translateY(-4px)`;
+    });
+    dlBtn.addEventListener('mouseleave', function() { this.style.transform = ''; });
+}
+
+// ── TYPEWRITER ──
+const words = ['AI fitness', 'nutrition', 'workout', 'body'];
+const twEl = document.getElementById('tw');
+if (REDUCED) {
+    twEl.textContent = words[0];           // static, no animation
+} else {
+    let wi = 0, ci = 0, del = false;
+    (function type() {
+        const w = words[wi];
+        if (del) { twEl.textContent = w.slice(0, --ci); }
+        else      { twEl.textContent = w.slice(0, ++ci); }
+        let spd = del ? 48 : 95;
+        if (!del && ci === w.length) { spd = 2100; del = true; }
+        else if (del && ci === 0)   { del = false; wi = (wi+1) % words.length; spd = 420; }
+        setTimeout(type, spd);
+    })();
+}
+
+// ── SCROLL REVEAL ──
+if (REDUCED || !('IntersectionObserver' in window)) {
+    document.querySelectorAll('.reveal').forEach(el => el.classList.add('on'));
+} else {
+    const obs = new IntersectionObserver(entries => {
+        entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('on'); obs.unobserve(e.target); } });
+    }, { threshold: .12, rootMargin: '0px 0px -40px 0px' });
+    document.querySelectorAll('.reveal:not(.on)').forEach(el => obs.observe(el));
+}
+
+// ── PRETEXT text layout (after fonts ready) ──
+document.fonts.ready.then(() => {
+    if (!window.PretextAPI) return;
+    const { prepare, layout } = window.PretextAPI;
+    const els = document.querySelectorAll('[data-pt]');
+    const map = new Map();
+    els.forEach(el => map.set(el, prepare(el.textContent, getComputedStyle(el).font)));
+    function relayout() {
+        map.forEach((handle, el) => {
+            const { height } = layout(handle, el.clientWidth, parseFloat(getComputedStyle(el).lineHeight) || 24);
+            el.style.height = height + 'px';
+        });
+    }
+    new ResizeObserver(relayout).observe(document.body);
+    relayout();
+});
+</script>
+</body>
+</html>

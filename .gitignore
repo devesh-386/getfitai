@@ -1,0 +1,13 @@
+# Editor / OS
+.DS_Store
+Thumbs.db
+
+# Local tooling (preview server config, not needed in deploy)
+.claude/
+
+# Backups & internal docs
+*.backup
+DESIGN_BRIEF.md
+
+# Dependencies (none expected for this static site)
+node_modules/

@@ -1,6 +1,6 @@
 export default async function handler(req, res) {
   const APK_URL =
-    'https://github.com/devesh-386/FitAI/releases/download/v1.0.1/FitAI-v1.0.1.apk';
+    'https://github.com/devesh-386/FitAI/releases/download/v3.0.0/FitAI-v3.0.0.apk';
 
   const upstream = await fetch(APK_URL, { redirect: 'follow' });
 
@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   }
 
   res.setHeader('Content-Type', 'application/vnd.android.package-archive');
-  res.setHeader('Content-Disposition', 'attachment; filename="FitAI-v2.0.0.apk"');
+  res.setHeader('Content-Disposition', 'attachment; filename="FitAI-v3.0.0.apk"');
 
   const contentLength = upstream.headers.get('content-length');
   if (contentLength) res.setHeader('Content-Length', contentLength);
